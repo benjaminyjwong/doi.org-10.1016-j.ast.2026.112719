@@ -1,0 +1,63 @@
+################################################################################
+# @ben.wyj
+################################################################################
+
+seed                12345
+dimension           3
+
+global              gridcut 0.1 comm/sort yes surfmax 600
+
+boundary            o o o
+
+create_box          -2.5 2.5 -2.5 2.5 -1.5 1.5
+
+create_grid         80 80 48
+
+balance_grid        rcb cell
+
+global              nrho -505627.9407133007 fnum -3370.8529380886716 temp -0.02400659440552394
+
+species             air.species N O N2 O2
+mixture             air N O N2 O2 vstream -11630.061523523409 0 0
+
+read_surf           data.satellite_wedged
+group               panelR surf id 1:28 
+group               rest surf id 29:1596 
+surf_collide        1 diffuse 300 0.5 
+surf_collide        2 diffuse 300 1.0 
+surf_modify         panelR collide 1 
+surf_modify         rest collide 2 
+# 
+# 
+
+
+collide             vss air air.vss # none -> tpmc
+
+fix                 in emit/face air xhi twopass 
+
+timestep            0.0001
+
+### compute forces
+# compute             1 surf all all fx shx shy shz px py pz press # fx shx shy shz px press
+compute             1 surf all all fx fy fz shx shy shz px py pz press 
+fix                 1 ave/surf all 1 1200 1500 c_1[*] 	# 10 200 2000 c_1[*]
+### compute Fd
+# compute             2 surf all all fx
+# fix                 2 ave/surf all 1 0 100 c_2[*] 	# 10 200 2000 c_1[*]
+# compute             3 reduce sum f_2[*]                             # Fx
+### compute Flift
+# compute             4 surf all all fz
+# fix                 3 ave/surf all 1 0 100 c_4[*] 	# 10 200 2000 c_1[*]
+# compute             5 reduce sum f_3[*]                             # Fz
+### compute temp->KE_system
+# compute             6 temp 
+
+
+### dumps
+dump                1 surf all 1500 dump.myrun.* id f_1[*] # not type!
+
+
+stats               100
+# stats_style         step cpu c_3 c_5 np c_6 # (Fd, Flift, N_particles, Temp_system)
+stats_style         step cpu np # (Fd, Flift, N_particles, Temp_system)
+run                 1500 # 50000
